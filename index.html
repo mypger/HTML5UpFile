@@ -2,8 +2,40 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-		<title></title>
+		<title>HTML5 upload files</title>
+		<script type="text/javascript" src="jquery-2.1.0.js" ></script>
+		<script type="text/javascript" src="JQuery.HTML5UpFile.js" ></script>
 	</head>
 	<body>
+		<label>
+			<a>点我吧</a>
+			<input type="file" id="upfile" style="display: none;" />
+		</label>
+		
 	</body>
+	<script>
+	var d=document.getElementById("upfile");
+
+		var config={
+			url:'',// 接收文件的url
+			requestHeader:{},//请求头
+			extraSendData:{}, //额外发送的数据
+			uploadNumber:10, //允许同时上传的文件个数
+			thumWidth:160, //缩略图的最大宽度
+			thumHeight:120, //缩略图的最大高度
+			limitWidth:6000, //限制原图的最大宽度
+			limitHeight:6000, //限制原图的最大高度
+			limitSize:10485760, //限制上传size(单位：b)
+			fileMaxNumber:10, //最大文件数量上限
+			fileAccept:"image/gif,image/png,image/jpeg", //允许选择哪些格式的文件
+			immediately:false, //是否选完立即上传
+			createThumbnail:true, //如果文件是图片是否创建缩略图
+			startButton:false, //开始上传按扭
+			stopButton:false, //停止上传按扭
+		};
+		$("#upfile").upload(config,function(evt){
+			//这是一个回调函数，可以在这里监听所有的上传行为 
+			
+		});
+	</script>
 </html>
