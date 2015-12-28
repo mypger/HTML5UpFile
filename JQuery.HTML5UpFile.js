@@ -33,17 +33,64 @@ $.fn.upload=function(config,callback){
 		config.startButton= (typeof(config.startButton)=="object")?config.startButton:false; //开始上传按扭
 		config.stopButton= (typeof(config.stopButton)=="object")?config.stopButton:false; //停止上传按扭
 	}
-	this.Event=function(type,target){
+	//创建事件
+	this.createEvent=function(type,target){
 		var eventid=self.currentEventId?self.currentEventId:0;
 		self.currentEventId=(eventid+1);
-		return 
-		{
-			time:new Date().getTime(),
-			type:type,
-			target:target,
-			eventid:eventid
-		}
+		var obj={};
+		obj.time=new Date().getTime();
+		obj.type=type;
+		obj.target=target;
+		obj.eventid=eventid;
+		return obj;
 	}
+	//处理事件
+	this.handleEvent=function(evt){
+		//console.log(evt);
+	}
+	//创建缩略图
+	this.createThumbnail=function(batch){
+		this.create=function(src,callback){
+			var img=document.createElement("img")
+			img.onload=function(){
+				var w = config.thumWidth;
+				var h = config.thumHeight;
+				if ((img.width / img.height)>(w/h)) {
+					h = config.thumWidth / (img.width / img.height);
+				} else {
+					w = config.thumHeight / (img.height / img.width);
+				}
+				var c = document.createElement("canvas");
+				c.width = w;
+				c.height = h;
+				var cxt = c.getContext("2d");
+				cxt.drawImage(img, 0, 0, w, h);
+				delete img;
+				delete cxt;
+				$("body").append(c);
+				callback(c);
+			};
+			img.src=src;
+		}
+		for(k in batch){
+			var obj=batch[k];
+			if(obj.status=="WCT"){
+				obj.status="CT";
+				self.handleEvent(self.createEvent("CT",obj));
+				var URL = window.URL && window.URL.createObjectURL ? window.URL : window.webkitURL && window.webkitURL.createObjectURL ? window.webkitURL : null;
+				this.create(URL.createObjectURL(obj.data),function(res){
+					delete URL;
+					obj.canvas=res;
+					obj.status="CTC";
+					self.handleEvent(self.createEvent("CTC",obj));
+					self.createThumbnail(batch);
+				});
+				return;
+			}
+		}
+		self.handleEvent(self.createEvent("BCTC",batch));
+	}
+	//初始化文件选择
 	this.initSelect=function(){
 		if(config.fileMaxNumber>1){
 			self.attr("multiple","multiple");
@@ -53,26 +100,50 @@ $.fn.upload=function(config,callback){
 			var tempFiles = self[0].files;
 			this.isrefile=function(newfile){
 				for(k in self.filelist){
-					var oldfile=self.filelist[k];
+					var oldfile=self.filelist[k].data;
 					if(newfile.lastModified==oldfile.lastModified&&newfile.name==oldfile.name&&newfile.size==oldfile.size&&newfile.type==oldfile.type){
 						return true;
 					}
 				}
 				return false;
 			}
+			var batchid=new Date().getTime().toString(36);
+			var batch=[];
 			for (var i=0;i<tempFiles.length;i++) {
-				var file=tempFiles[i];
-				if(this.isrefile(file)){
-					var evt=self.Event("repeated",file);
-					//写到这里 2015年12月28日0:24:29
+				var newfile={};
+				newfile.batch=batchid;
+				newfile.data=tempFiles[i];
+				newfile.fileid=batchid+"_"+i;
+				newfile.status='new';
+				if(this.isrefile(newfile.data)){
+					self.handleEvent(self.createEvent("repeated",newfile.data));
 					continue;
 				}
-				self.filelist.push(file);
+				batch.push(newfile);
+				self.handleEvent(self.createEvent("addOne",newfile));
 			}
-			
+			self.filelist.concat(self.filelist,batch);
+			self.handleEvent(self.createEvent("addComplate",batch));
+			if(config.createThumbnail){
+				var hasImage=false;
+				for(k in batch){
+					switch(batch[k].data.type){
+						case "image/jpeg":
+						case "image/png":
+						case "image/gif":
+						case "image/bmp":
+							batch[k].status="WCT";//WCT:Waiting create thumbnail
+							hasImage=true;
+						break;
+					}
+				}
+				if(hasImage){
+					self.createThumbnail(batch);
+				}
+				//2015年12月29日0:23:05
+				//写到这里，多个地方要做是否立即上传判断
+			}
 		});
 	}	
 	this.init();
-	var e=new window.CustomEvent(this);
-	console.log(e);
 }
