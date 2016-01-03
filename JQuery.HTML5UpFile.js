@@ -16,6 +16,7 @@ $.fn.upload=function(config,callback){
 		self.initSelect();
 	}
 	this.configure=function(){
+		//config是全局的
 		config=(typeof(config)=="object")?config:{};
 		config.url = config.url?config.url:''; //目标URl
 		config.requestHeader = (typeof(config.requestHeader)=="object")?config.requestHeader:{}; //请求头
@@ -46,6 +47,7 @@ $.fn.upload=function(config,callback){
 	}
 	//处理事件
 	this.handleEvent=function(evt){
+		callback(evt);
 		//console.log(evt);
 	}
 	//创建缩略图
@@ -74,21 +76,24 @@ $.fn.upload=function(config,callback){
 		}
 		for(k in batch){
 			var obj=batch[k];
-			if(obj.status=="WCT"){
-				obj.status="CT";
+			if(obj.status=="WCT"){//WCT:Waiting create thumbnail
+				obj.status="CT";//CT:Create thumbnail
 				self.handleEvent(self.createEvent("CT",obj));
 				var URL = window.URL && window.URL.createObjectURL ? window.URL : window.webkitURL && window.webkitURL.createObjectURL ? window.webkitURL : null;
 				this.create(URL.createObjectURL(obj.data),function(res){
 					delete URL;
 					obj.canvas=res;
-					obj.status="CTC";
+					obj.status="CTC";//CTC:Create thumbnail complete
 					self.handleEvent(self.createEvent("CTC",obj));
 					self.createThumbnail(batch);
 				});
 				return;
 			}
 		}
-		self.handleEvent(self.createEvent("BCTC",batch));
+		self.handleEvent(self.createEvent("BCTC",batch));//BWCT:Batch create thumbnail complete
+		if(config.immediately){
+			self.immediatelyUp(batch);
+		}
 	}
 	//初始化文件选择
 	this.initSelect=function(){
@@ -127,6 +132,7 @@ $.fn.upload=function(config,callback){
 			if(config.createThumbnail){
 				var hasImage=false;
 				for(k in batch){
+					//标识等待创建缩略图的文件
 					switch(batch[k].data.type){
 						case "image/jpeg":
 						case "image/png":
@@ -139,11 +145,16 @@ $.fn.upload=function(config,callback){
 				}
 				if(hasImage){
 					self.createThumbnail(batch);
+				}else if(config.immediately){
+					self.immediatelyUp(batch);
 				}
-				//2015年12月29日0:23:05
-				//写到这里，多个地方要做是否立即上传判断
 			}
 		});
-	}	
+	}
+	//立即上传
+	this.immediatelyUp=function(){
+		//2016年1月4日0:18:27
+		//写到这里
+	}
 	this.init();
 }
