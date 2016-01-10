@@ -4,18 +4,20 @@
  * @create 2015年12月27日23:18:08
  * @last 2015年12月27日23:18:12
  */
-$.fn.upload = function(config, callback) {
+$.fn.upload = function(conf, callback) {
 	var self = this;
 	this.filelist = [];
-	this.init = function() {
+	this.config={};
+	
+	function init() {
 		if ($(self)[0].type != 'file' && $(self)[0].nodeName != "INPUT") {
 			console.warn("你绑定的元素不是文件域", $(self)[0]);
 			return;
 		}
-		self.configure();
-		self.initSelect();
+		self.config=configure(conf);
+		initSelect();
 	}
-	this.configure = function() {
+	function configure(conf) {
 		//config是全局的
 		config = (typeof(config) == "object") ? config : {};
 		config.url = config.url ? config.url : ''; //目标URl
@@ -33,6 +35,7 @@ $.fn.upload = function(config, callback) {
 		config.createThumbnail = (typeof(config.createThumbnail) == "boolean") ? config.createThumbnail : true; //如果文件是图片是否创建缩略图
 		config.startButton = (typeof(config.startButton) == "object") ? config.startButton : false; //开始上传按扭
 		config.stopButton = (typeof(config.stopButton) == "object") ? config.stopButton : false; //停止上传按扭
+		return config;
 	}
 	//创建事件	
 	this.createEvent = function(type, target) {
@@ -47,13 +50,13 @@ $.fn.upload = function(config, callback) {
 	}
 	//处理事件
 	this.handleEvent = function(evt) {
+		console.log(evt.target.targetId,evt);
 		callback(evt);
 		switch(evt.type){
 			case "upComplate":
 			case "upError":
 			case "upAbort":
-				self.currentUpNumber--;
-				self.loopUpload();
+				self.uploadBatch();
 			break;
 		}
 		
@@ -100,11 +103,12 @@ $.fn.upload = function(config, callback) {
 		}
 		self.handleEvent(self.createEvent("BCTC", batch)); //BWCT:Batch create thumbnail complete
 		if (config.immediately) {
-			self.loopUpload(batch);
+			self.uploadBatch(batch);
 		}
 	}
 	//初始化文件选择
-	this.initSelect = function() {
+	function initSelect() {
+		console.log(self);
 		if (config.fileMaxNumber > 1) {
 			self.attr("multiple", "multiple");
 		}
@@ -123,11 +127,27 @@ $.fn.upload = function(config, callback) {
 			var batchid = new Date().getTime().toString(36);
 			var batch = [];
 			for (var i = 0; i < tempFiles.length; i++) {
+				var file=tempFiles[i];
+				console.log(file);
+				
+				//将文件放入一个批次中
 				var newfile = {};
 				newfile.batch = batchid;
-				newfile.data = tempFiles[i];
-				newfile.fileid = batchid + "_" + i;
+				newfile.data = file;
+				newfile.targetId = batchid + "_" + i;
 				newfile.status = 'new';
+				//判断文件类型，放行允许的文件类型和未知的文件类型（因为浏览器不能识别某些文件类型） 
+				var re=new RegExp(file.type,"i");
+				if((file.type!="")&&(!re.test(config.fileAccept))){
+					self.handleEvent(self.createEvent("limitType", newfile.data));
+					continue;
+				}
+				//判断文件大小
+				if(file.size>config.limitSize){
+					self.handleEvent(self.createEvent("limitSize", newfile.data));
+					continue;
+				}
+				//判断文件是否重复
 				if (this.isrefile(newfile.data)) {
 					self.handleEvent(self.createEvent("repeated", newfile.data));
 					continue;
@@ -136,7 +156,7 @@ $.fn.upload = function(config, callback) {
 				self.handleEvent(self.createEvent("addOne", newfile));
 			}
 			self.filelist.concat(self.filelist, batch);
-			self.handleEvent(self.createEvent("addComplate", batch));
+			self.handleEvent(self.createEvent("addBatch", batch));
 			if (config.createThumbnail) {
 				var hasImage = false;
 				for (k in batch) {
@@ -147,6 +167,7 @@ $.fn.upload = function(config, callback) {
 						case "image/gif":
 						case "image/bmp":
 							batch[k].status = "WCT"; //WCT:Waiting create thumbnail
+							self.handleEvent(self.createEvent("WCT", batch[k]));
 							hasImage = true;
 							break;
 					}
@@ -154,24 +175,23 @@ $.fn.upload = function(config, callback) {
 				if (hasImage) {
 					self.createThumbnail(batch);
 				} else if (config.immediately) {
-					self.loopUpload(batch);
+					self.uploadBatch(batch);
 				}
 			}
 		});
 	}
-	//循环上传
-	this.loopUpload = function(batch) {
-		self.currentBatch=batch?batch:self.currentBatch;
-		self.currentUpNumber=self.currentUpNumber?self.currentUpNumber:1;
-		for(k in self.currentBatch){
-			if((++self.currentUpNumber)>config.fileMaxNumber){
-				return;
-			}
-			self.upload(self.currentBatch[k]);
+	//批量上传
+	this.uploadBatch = function(batch) {
+		self.currentBatch=Array();
+		for(k in batch){
+			self.currentBatch[k]=batch[k];
 		}
+		//2016年1月11日1:37:00
+		//写到这里
+
 	}
-	//上传文件
-	this.upload = function(obj) {
+	//单个上传
+	this.uploadFile = function(obj) {
 		obj.fd = new FormData();
 		obj.fd.enctype = "multipart/form-data";
 		for (k in config.extraSendData) {
@@ -184,19 +204,28 @@ $.fn.upload = function(config, callback) {
 		}
 		obj.fd.append(obj.data.name, obj.data);
 		obj.xhr.upload.addEventListener("progress", function(evt) {
+			evt.targetId=obj.targetId;
+			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upProgress", evt));
 		}, true);
 		obj.xhr.addEventListener("load", function(evt) {
+			evt.targetId=obj.targetId;
+			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upComplate", evt));
 		}, true);
 		obj.xhr.addEventListener("error", function(evt) {
+			evt.targetId=obj.targetId;
+			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upError", evt));
 		}, true);
 		obj.xhr.addEventListener("abort", function(evt) {
+			evt.targetId=obj.targetId;
+			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upAbort", evt));
 		}, true);
+		self.handleEvent(self.createEvent("upStart", obj));
 		obj.xhr.send(obj.fd);
 
 	}
-	this.init();
+	init();
 }
