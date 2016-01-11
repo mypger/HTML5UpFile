@@ -56,7 +56,7 @@ $.fn.upload = function(conf, callback) {
 			case "upComplate":
 			case "upError":
 			case "upAbort":
-				self.uploadBatch();
+				evt.target.targetFile.upResultCallback();
 			break;
 		}
 		
@@ -128,8 +128,6 @@ $.fn.upload = function(conf, callback) {
 			var batch = [];
 			for (var i = 0; i < tempFiles.length; i++) {
 				var file=tempFiles[i];
-				console.log(file);
-				
 				//将文件放入一个批次中
 				var newfile = {};
 				newfile.batch = batchid;
@@ -182,13 +180,25 @@ $.fn.upload = function(conf, callback) {
 	}
 	//批量上传
 	this.uploadBatch = function(batch) {
-		self.currentBatch=Array();
-		for(k in batch){
-			self.currentBatch[k]=batch[k];
+		var currentBatch=[];
+		function up(){
+			var obj=currentBatch.shift();
+			if(!obj){
+				self.handleEvent(self.createEvent("batchUpComplate", batch));
+				return;
+			}
+			obj.upResultCallback=function(){
+				up();
+			}
+			self.uploadFile(obj);
 		}
-		//2016年1月11日1:37:00
-		//写到这里
-
+		for(k in batch){
+			currentBatch[k]=batch[k];
+		}
+		for(var i=0;i<config.uploadNumber;i++){
+			console.log(i);
+			up();
+		}
 	}
 	//单个上传
 	this.uploadFile = function(obj) {
@@ -205,21 +215,25 @@ $.fn.upload = function(conf, callback) {
 		obj.fd.append(obj.data.name, obj.data);
 		obj.xhr.upload.addEventListener("progress", function(evt) {
 			evt.targetId=obj.targetId;
+			evt.targetFile=obj;
 			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upProgress", evt));
 		}, true);
 		obj.xhr.addEventListener("load", function(evt) {
 			evt.targetId=obj.targetId;
+			evt.targetFile=obj;
 			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upComplate", evt));
 		}, true);
 		obj.xhr.addEventListener("error", function(evt) {
 			evt.targetId=obj.targetId;
+			evt.targetFile=obj;
 			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upError", evt));
 		}, true);
 		obj.xhr.addEventListener("abort", function(evt) {
 			evt.targetId=obj.targetId;
+			evt.targetFile=obj;
 			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upAbort", evt));
 		}, true);
