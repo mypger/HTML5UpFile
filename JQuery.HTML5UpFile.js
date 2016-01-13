@@ -278,7 +278,6 @@ $.fn.upload = function(targetUrl,option, callback) {
 				case "upComplate":
 				case "upError":
 				case "upAbort":
-				
 				break;
 			}
 		}
