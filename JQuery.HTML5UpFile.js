@@ -2,11 +2,12 @@
  * jQuery扩展之H5上传文件，支持本地预览和生成缩略图
  * @author jianrun 385884606@qq.com
  * @create 2015年12月27日23:18:08
- * @last 2015年12月27日23:18:12
  */
 $.fn.upload = function(targetUrl,option, callback) {
 	var self = this;
 	this.filelist = [];
+	this.status='free';
+	this.currentUploadList=[];
 	function init() {
 		if ($(self)[0].type != 'file' && $(self)[0].nodeName != "INPUT") {
 			console.warn("你绑定的元素不是文件域", $(self)[0]);
@@ -14,13 +15,13 @@ $.fn.upload = function(targetUrl,option, callback) {
 		}
 		initOption();
 		initSelect();
+		initBuootnEvent();
 	}
+	//初始化选项
 	function initOption() {
 		//option是全局的
 		option = (typeof(option) == "object") ? option : {};
 		option.url = option.url ? option.url : targetUrl; //上传文件地址
-		option.splitSize=option.splitSize?option.splitSize:0;//分割大小(单位：b)
-		option.queryUrl = option.queryUrl ? option.queryUrl : option.url; //分割上传文件时用来查看文件上传情况的地址
 		option.requestHeader = (typeof(option.requestHeader) == "object") ? option.requestHeader : {}; //请求头
 		option.extraSendData = (typeof(option.extraSendData) == "object") ? option.extraSendData : {}; //额外发送的数据
 		option.uploadNumber = (typeof(option.uploadNumber) == "number") ? option.uploadNumber : 1; //允许同时上传的文件个数
@@ -38,83 +39,14 @@ $.fn.upload = function(targetUrl,option, callback) {
 		self.option=option;
 		console.log(option.url);
 	}
-	//创建事件	
-	this.createEvent = function(type, target) {
-		var eventid = self.currentEventId ? self.currentEventId : 0;
-		self.currentEventId = (eventid + 1);
-		var obj = {};
-		obj.time = new Date().getTime();
-		obj.type = type;
-		obj.target = target;
-		obj.eventid = eventid;
-		return obj;
-	}
-	//处理事件
-	this.handleEvent = function(evt) {
-		console.log(evt.target.targetId,evt);
-		callback(evt);
-		switch(evt.type){
-			case "upComplate":
-			case "upError":
-			case "upAbort":
-				evt.target.targetFile.upResultCallback();
-			break;
-		}
-		
-	}
-		//创建缩略图
-	this.createThumbnail = function(batch) {
-		this.create = function(src, callback) {
-			var img = document.createElement("img")
-			img.onload = function() {
-				var w = option.thumWidth;
-				var h = option.thumHeight;
-				if ((img.width / img.height) > (w / h)) {
-					h = option.thumWidth / (img.width / img.height);
-				} else {
-					w = option.thumHeight / (img.height / img.width);
-				}
-				var c = document.createElement("canvas");
-				c.width = w;
-				c.height = h;
-				var cxt = c.getContext("2d");
-				cxt.drawImage(img, 0, 0, w, h);
-				delete img;
-				delete cxt;
-				callback(c);
-			};
-			img.src = src;
-		}
-		for (k in batch) {
-			var obj = batch[k];
-			if (obj.status == "WCT") { //WCT:Waiting create thumbnail
-				obj.status = "CT"; //CT:Create thumbnail
-				self.handleEvent(self.createEvent("CT", obj));
-				var URL = window.URL && window.URL.createObjectURL ? window.URL : window.webkitURL && window.webkitURL.createObjectURL ? window.webkitURL : null;
-				this.create(URL.createObjectURL(obj.data), function(res) {
-					delete URL;
-					obj.canvas = res;
-					obj.status = "CTC"; //CTC:Create thumbnail complete
-					self.handleEvent(self.createEvent("CTC", obj));
-					self.createThumbnail(batch);
-				});
-				return;
-			}
-		}
-		self.handleEvent(self.createEvent("BCTC", batch)); //BWCT:Batch create thumbnail complete
-		if (option.immediately) {
-			self.uploadBatch(batch);
-		}
-	}
-	//初始化文件选择
+	//初始化选择文件事件
 	function initSelect() {
-		console.log(self);
 		if (option.fileMaxNumber > 1) {
 			self.attr("multiple", "multiple");
 		}
 		self.attr("accept", option.fileAccept);
 		self.change(function(e) {
-			var tempFiles = self[0].files;
+			var tempFiles = this.files;
 			this.isrefile = function(newfile) {
 				for (k in self.filelist) {
 					var oldfile = self.filelist[k].data;
@@ -153,7 +85,7 @@ $.fn.upload = function(targetUrl,option, callback) {
 				batch.push(newfile);
 				self.handleEvent(self.createEvent("addOne", newfile));
 			}
-			self.filelist.concat(self.filelist, batch);
+			self.filelist=self.filelist.concat(batch);
 			self.handleEvent(self.createEvent("addBatch", batch));
 			if (option.createThumbnail) {
 				var hasImage = false;
@@ -174,23 +106,120 @@ $.fn.upload = function(targetUrl,option, callback) {
 					self.createThumbnail(batch);
 				} else if (option.immediately) {
 					self.uploadBatch(batch);
+				}else{
+					option.startButton.removeAttr("disabled");
 				}
 			}
 		});
 	}
+	//初始化按钮事件
+	function initBuootnEvent(){
+		if(!option.startButton||!option.startButton[0]){
+			option.startButton=$("<input type='button' value='开始上传' />");
+		}
+		option.startButton.click(function(){
+			self.startUpload();
+		}).attr("disabled","disabled");
+		if(!option.stopButton||!option.stopButton[0]){
+			option.stopButton=$("<input type='button' value='暂停上传' />");
+		}
+		option.stopButton.click(function(){
+			self.stopUpload();
+		}).attr("disabled","disabled");
+	}
+	//创建事件
+	this.createEvent = function(type, target) {
+		var eventid = self.currentEventId ? self.currentEventId : 0;
+		self.currentEventId = (eventid + 1);
+		var obj = {};
+		obj.time = new Date().getTime();
+		obj.type = type;
+		obj.target = target;
+		obj.eventid = eventid;
+		return obj;
+	}
+	//处理事件
+	this.handleEvent = function(evt) {
+		callback(evt);
+		switch(evt.type){
+			case "upComplate":
+			case "upError":
+				delete self.currentUploadList[evt.target.targetId];
+				evt.target.targetFile.upResultCallback();
+			case "upAbort":
+			
+			break;
+		}
+	}
+	//创建缩略图
+	this.createThumbnail = function(batch) {
+		this.create = function(src, callback) {
+			var img = document.createElement("img")
+			img.onload = function() {
+				var w = option.thumWidth;
+				var h = option.thumHeight;
+				if ((img.width / img.height) > (w / h)) {
+					h = option.thumWidth / (img.width / img.height);
+				} else {
+					w = option.thumHeight / (img.height / img.width);
+				}
+				var c = document.createElement("canvas");
+				c.width = w;
+				c.height = h;
+				var cxt = c.getContext("2d");
+				cxt.drawImage(img, 0, 0, w, h);
+				delete img;
+				delete cxt;
+				callback(c);
+			};
+			img.src = src;
+		}
+		for (k in batch) {
+			var obj = batch[k];
+			if (obj.status == "WCT") { //WCT:Waiting create thumbnail
+				obj.status = "CT"; //CT:Creating thumbnail
+				self.handleEvent(self.createEvent("CT", obj));
+				var URL = window.URL && window.URL.createObjectURL ? window.URL : window.webkitURL && window.webkitURL.createObjectURL ? window.webkitURL : null;
+				this.create(URL.createObjectURL(obj.data), function(res) {
+					delete URL;
+					obj.canvas = res;
+					obj.status = "CTC"; //CTC:Create thumbnail complete
+					self.handleEvent(self.createEvent("CTC", obj));
+					self.createThumbnail(batch);
+				});
+				return;
+			}
+		}
+		self.handleEvent(self.createEvent("BCTC", batch)); //BWCT:Batch create thumbnail complete
+		if (option.immediately) {
+			self.uploadBatch(batch);
+		}else{
+			option.startButton.removeAttr("disabled");
+		}
+	}
 	//批量上传
 	this.uploadBatch = function(batch) {
-		var i=0;
+		if(self.status=='upProgress'){
+			//上一批正在上传中
+			return;
+		}
+		var n=0;
 		var currentBatch=[];
 		function up(){
+			n++;
 			var obj=currentBatch.shift();
 			if(!obj){
-				if((i--)<1){
+				n--;
+				if(n<1){
+					self.status='free';
+					option.startButton.attr("disabled","disabled");
+					option.stopButton.attr("disabled","disabled");
 					self.handleEvent(self.createEvent("batchUpComplate", batch));
 				}
 				return;
 			}
 			obj.upResultCallback=function(){
+				n--;
 				up();
 			}
 			if(obj.status=="load"){
@@ -198,22 +227,19 @@ $.fn.upload = function(targetUrl,option, callback) {
 				return;
 			}
 			self.uploadFile(obj);
-//			if(option.splitSize>0){
-//				self.splitUpload(obj);
-//			}else{
-//				self.uploadFile(obj);
-//			}
-			
 		}
 		for(k in batch){
 			currentBatch[k]=batch[k];
 		}
-		for(;i<option.uploadNumber;i++){
+		for(var i=0;i<option.uploadNumber;i++){
 			up();
 		}
 	}
 	//单个上传
 	this.uploadFile = function(obj) {
+		this.status="upProgress";
+		option.startButton.attr("disabled","disabled");
+		option.stopButton.removeAttr("disabled");
 		obj.fd = new FormData();
 		obj.fd.enctype = "multipart/form-data";
 		for (k in option.extraSendData) {
@@ -250,70 +276,34 @@ $.fn.upload = function(targetUrl,option, callback) {
 			self.handleEvent(self.createEvent("upAbort", evt));
 		}, true);
 		self.handleEvent(self.createEvent("upStart", obj));
+		self.currentUploadList[obj.targetId]=obj;
 		obj.xhr.send(obj.fd);
 	}
-	//分割上传
-	this.splitUpload=function(obj){
-		//未完成部分 2016年1月13日23:39:45
-		var sup=this;
-		var loaded=0;
-		//查询之前是否上传过此文件？上传了多少个字节？
-		function queryUpload(obj,callback){
-			var send={};
-			for (k in option.extraSendData) {
-				send[k]=option.extraSendData[k];
-			}
-			send.fileLastModified=obj.target.lastModified;
-			send.fileName=obj.target.name;
-			send.fileSize=obj.target.size;
-			send.fileType=obj.target.type;
-			$.post(option.queryUrl,send,function(){
-				
-			});
-		}
-		//响应上传事件
-		function uploadEvent(type,evt){
-			switch(type){
-				case "upProgress":
-				case "upComplate":
-				case "upError":
-				case "upAbort":
+	//开始上传
+	this.startUpload=function(){
+		var batch=[];
+		for(k in self.filelist){
+			switch(self.filelist[k].status){
+				case "new":
+				case "CTC":
+				case "WCT":
+				case "CTC":
+				case "error":
+				case "abort":
+					batch.push(self.filelist[k]);
 				break;
 			}
 		}
-		function sendDate(obj){
-			var fd = new FormData();
-			fd.enctype = "multipart/form-data";
-			for (k in option.extraSendData) {
-				fd.append(k, option.extraSendData[k]);
-			}
-			fd.append(obj.data.name, obj.data);
-			var xhr = new XMLHttpRequest();
-			xhr.open("POST", option.url, true);
-			for (k in option.requestHeader) {
-				xhr.setRequestHeader(k, option.requestHeader[k]);
-			}
-			xhr.upload.addEventListener("progress", function(evt) {
-				uploadEvent("progress", evt);
-			}, true);
-			xhr.addEventListener("load", function(evt) {
-				uploadEvent("load", evt);
-			}, true);
-			xhr.addEventListener("error", function(evt) {
-				uploadEvent("error", evt);
-			}, true);
-			xhr.addEventListener("abort", function(evt) {
-				uploadEvent("abort", evt);
-			}, true);
-			xhr.send(fd);
+		self.uploadBatch(batch);
+	}
+	//停止上传
+	this.stopUpload=function(){
+		for(k in self.currentUploadList){
+			self.currentUploadList[k].xhr.abort();
 		}
-		function splitFile(data,start,end){
-			
-		}
-		queryUpload(obj,function(d){
-			var uploaded=d.uploaded;
-			
-		});
+		self.status='free';
+		option.stopButton.attr("disabled","disabled");
+		option.startButton.removeAttr("disabled");
 	}
 	init();
 }
