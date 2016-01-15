@@ -36,6 +36,7 @@ $.fn.upload = function(targetUrl,option, callback) {
 		option.createThumbnail = (typeof(option.createThumbnail) == "boolean") ? option.createThumbnail : true; //如果文件是图片是否创建缩略图
 		option.startButton = (typeof(option.startButton) == "object") ? option.startButton : false; //开始上传按扭
 		option.stopButton = (typeof(option.stopButton) == "object") ? option.stopButton : false; //停止上传按扭
+		option.fileInputName=option.fileInputName?option.fileInputName:"html5upfile";//表单中的文件域名称(在php中或以通过$_FILES["html5upfile"]["tmp_name"]得到上传的文件)
 		self.option=option;
 		console.log(option.url);
 	}
@@ -250,7 +251,7 @@ $.fn.upload = function(targetUrl,option, callback) {
 		for (k in option.requestHeader) {
 			obj.xhr.setRequestHeader(k, option.requestHeader[k]);
 		}
-		obj.fd.append(obj.data.name, obj.data);
+		obj.fd.append(option.fileInputName, obj.data);
 		obj.xhr.upload.addEventListener("progress", function(evt) {
 			evt.targetId=obj.targetId;
 			evt.targetFile=obj;

@@ -5,37 +5,110 @@
 		<title>HTML5 upload files</title>
 		<script type="text/javascript" src="jquery-2.1.0.js" ></script>
 		<script type="text/javascript" src="JQuery.HTML5UpFile.js" ></script>
+		<style>
+			.selectFileBt{
+				display: inline-block; padding: 2px 5px ; border: 1px solid #ccc;font-size: 11px; line-height: 16px;background-color: #eee;
+			}
+		</style>
 	</head>
 	<body>
 		<label>
-			<a>点我吧</a>
+			<a class="selectFileBt"> 点我选择文件</a>
 			<input type="file" id="upfile" style="display: none;" />
 		</label>
-		
+		<input type="button" value="开始" id="start"/>
+		<input type="button" value="停止" id="stop" />
+		<div id="fileListBox">
+			
+		</div>
 	</body>
 	<script>
-	var d=document.getElementById("upfile");
-
-		var config={
-			url:'',// 接收文件的url
-			requestHeader:{},//请求头
-			extraSendData:{}, //额外发送的数据
+		var option={
+			//所有参数都是可选的
+			requestHeader:{}, //发送请求时要发送的请求头
+			extraSendData:{}, //额外发送的数据(POST)
 			uploadNumber:1, //允许同时上传的文件个数
+			createThumbnail:true,//如果文件是图片是否创建缩略图
 			thumWidth:160, //缩略图的最大宽度
-			thumHeight:120, //缩略图的最大高度
-			limitWidth:6000, //限制原图的最大宽度
-			limitHeight:6000, //限制原图的最大高度
+			thumHeight:120,//缩略图的最大高度
+			limitWidth:6000, //如果文件是图片限制最大宽度
+			limitHeight:6000,//如果文件是图片限制最大高度
 			limitSize:10485760, //限制上传size(单位：b)
-			fileMaxNumber:10, //最大文件数量上限
-			fileAccept:"image/gif,image/png,image/jpeg", //允许选择哪些格式的文件
-			immediately:true, //是否选完立即上传
-			createThumbnail:true, //如果文件是图片是否创建缩略图
-			startButton:false, //开始上传按扭
-			stopButton:false, //停止上传按扭
+			fileMaxNumber:100, //最大文件数量上限
+			fileAccept:"image/gif,image/png,image/jpeg",//允许选择哪些格式的文件
+			immediately:false,//是否选完立即上传
+			startButton:$("#start"), //开始上传按扭
+			stopButton:$("#stop"), //停止上传按扭
+			fileInputName:"html5upfile"//表单中的文件域名称(在php中或以通过$_FILES["html5upfile"]["tmp_name"]得到上传的文件)
 		};
-		$("#upfile").upload(config,function(evt){
+		$("#upfile").upload("/upload.php",option,function(evt){
+			//这是一个事件响应涵数，请跟据不同的事件作出你想要的效果
+			//事件有点多，不用担心，全都是可选的
+			console.log(evt.target.targetId,evt);
+			switch(evt.type){
+				case "addOne":
+					//
+					
+				break;
+				case "repeated":
+					//
+					
+				break;
+				case "limitType":
+					//
+					
+				break;
+				case "limitSize":
+					//
+					
+				break;
+				
+				case "addBatch":
+					//
+					
+				break;
+				case "WCT":
+					//
+					
+				break;
+				case "CT":
+					//
+					
+				break;
+				case "CTC":
+					//
+					
+				break;
+				case "BCTC":
+					//
+					
+				break;
+				case "batchUpComplate":
+					//
+					
+				break;
+				case "upProgress":
+					//
+					
+				break;
+				case "upStart":
+					//
+					
+				break;
+				case "upComplate":
+					//
+					
+				break;
+				case "upError":
+					//
+					
+				break;
+				case "upAbort":
+					//
+					
+				break;
+			}
 			
-			//这是一个回调函数，可以在这里监听所有的上传行为 
 			
 		});
 	</script>
