@@ -21,7 +21,7 @@ $.fn.upload = function(targetUrl,option, callback) {
 	function initOption() {
 		//option是全局的
 		option = (typeof(option) == "object") ? option : {};
-		option.url = option.url ? option.url : targetUrl; //上传文件地址
+		option.url = targetUrl?targetUrl:option.url ? option.url : ""; //上传文件地址
 		option.requestHeader = (typeof(option.requestHeader) == "object") ? option.requestHeader : {}; //请求头
 		option.extraSendData = (typeof(option.extraSendData) == "object") ? option.extraSendData : {}; //额外发送的数据
 		option.uploadNumber = (typeof(option.uploadNumber) == "number") ? option.uploadNumber : 1; //允许同时上传的文件个数
@@ -83,6 +83,7 @@ $.fn.upload = function(targetUrl,option, callback) {
 					self.handleEvent(self.createEvent("repeated", newfile.data));
 					continue;
 				}
+				newfile.element=$("<div></div>");
 				batch.push(newfile);
 				self.handleEvent(self.createEvent("addOne", newfile));
 			}
@@ -256,6 +257,7 @@ $.fn.upload = function(targetUrl,option, callback) {
 			evt.targetId=obj.targetId;
 			evt.targetFile=obj;
 			obj.status=evt.type;
+			evt.upPercentage=evt.loaded/evt.total*100;
 			self.handleEvent(self.createEvent("upProgress", evt));
 		}, true);
 		obj.xhr.addEventListener("load", function(evt) {
@@ -276,6 +278,11 @@ $.fn.upload = function(targetUrl,option, callback) {
 			obj.status=evt.type;
 			self.handleEvent(self.createEvent("upAbort", evt));
 		}, true);
+		obj.progressBar=$("<div></div>");
+		obj.progressBar.progress=$("<div style='width:0%'></div>");
+		obj.progressBar.progressSpan=$("<span></span>");
+		obj.progressBar.progress.append(obj.progressBar.progressSpan);
+		obj.progressBar.append(obj.progressBar.progress);
 		self.handleEvent(self.createEvent("upStart", obj));
 		self.currentUploadList[obj.targetId]=obj;
 		obj.xhr.send(obj.fd);

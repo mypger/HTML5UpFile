@@ -9,6 +9,29 @@
 			.selectFileBt{
 				display: inline-block; padding: 2px 5px ; border: 1px solid #ccc;font-size: 11px; line-height: 16px;background-color: #eee;
 			}
+			.upItem{
+				position: relative;
+				display: inline-block;
+				padding: 3px;
+				margin: 5px;
+				border: 1px solid #ccc;
+			}
+			.progressBar{
+				position: absolute;
+				bottom: 0px;
+				left: 0px;
+				right: 0px;
+				height: 16px;
+			}
+			.progressBar div{
+				background-color: rgba(0,0,0,0.3);
+				height: 16px;
+				transition: width 1s;
+				transition-timing-function:linear;
+			}
+			.progressBar div span{
+				text-shadow: 0px 0px 1px #fff ;
+			}
 		</style>
 	</head>
 	<body>
@@ -48,7 +71,8 @@
 			switch(evt.type){
 				case "addOne":
 					//
-					
+					$("#fileListBox").append(evt.target.element);
+					evt.target.element.addClass("upItem");
 				break;
 				case "repeated":
 					//
@@ -62,22 +86,21 @@
 					//
 					
 				break;
-				
 				case "addBatch":
 					//
 					
 				break;
 				case "WCT":
 					//
-					
+					evt.target.element.html("等待创建缩略图");
 				break;
 				case "CT":
 					//
-					
+					evt.target.element.html("正在创建缩略图");
 				break;
 				case "CTC":
 					//
-					
+					evt.target.element.empty().append(evt.target.canvas);
 				break;
 				case "BCTC":
 					//
@@ -87,13 +110,15 @@
 					//
 					
 				break;
-				case "upProgress":
-					//
-					
-				break;
 				case "upStart":
 					//
-					
+					evt.target.progressBar.addClass("progressBar");
+					evt.target.element.append(evt.target.progressBar);
+				break;
+				case "upProgress":
+					//
+					evt.target.targetFile.progressBar.progress.width(evt.target.upPercentage+"%");
+					evt.target.targetFile.progressBar.progressSpan.text(evt.target.upPercentage.toFixed(0)+"%");
 				break;
 				case "upComplate":
 					//
