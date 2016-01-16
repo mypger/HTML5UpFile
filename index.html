@@ -39,7 +39,7 @@
 			immediately:false,//是否选完立即上传
 			startButton:$("#start"), //开始上传按扭
 			stopButton:$("#stop"), //停止上传按扭
-			fileInputName:"html5upfile"//表单中的文件域名称(在php中或以通过$_FILES["html5upfile"]["tmp_name"]得到上传的文件)
+			fileInputName:"html5upfile"//表单中的文件域名称(在php中可以通过$_FILES["html5upfile"]["tmp_name"]得到上传的文件)
 		};
 		$("#upfile").upload("/upload.php",option,function(evt){
 			//这是一个事件响应涵数，请跟据不同的事件作出你想要的效果
