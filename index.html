@@ -67,7 +67,7 @@
 		$("#upfile").upload("/upload.php",option,function(evt){
 			//这是一个事件响应涵数，请跟据不同的事件作出你想要的效果
 			//事件有点多，不用担心，全都是可选的
-			console.log(evt.target.targetId,evt);
+			//console.log(evt);
 			switch(evt.type){
 				case "addOne":
 					//
@@ -122,7 +122,7 @@
 				break;
 				case "upComplate":
 					//
-					
+					console.log(evt.target.result);//这是服务器返回的数据
 				break;
 				case "upError":
 					//

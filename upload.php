@@ -32,7 +32,7 @@ function init(){
 	if(mkfolder($savePath)){
 		move_uploaded_file($_FILES["html5upfile"]["tmp_name"], $savePath . $_FILES["html5upfile"]["name"]);
 		$result['status']="ok";
-		$result['msg']="";
+		$result['msg']=$savePath . $_FILES["html5upfile"]["name"];
 		exit(json_encode($result));
 	}else{
 		$result['status']="error";

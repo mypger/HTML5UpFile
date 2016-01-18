@@ -264,6 +264,11 @@ $.fn.upload = function(targetUrl,option, callback) {
 			evt.targetId=obj.targetId;
 			evt.targetFile=obj;
 			obj.status=evt.type;
+			try{
+				evt.result=JSON.parse(evt.target.response);
+			}catch(e){
+				
+			}
 			self.handleEvent(self.createEvent("upComplate", evt));
 		}, true);
 		obj.xhr.addEventListener("error", function(evt) {
